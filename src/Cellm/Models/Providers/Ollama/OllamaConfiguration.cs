@@ -1,5 +1,4 @@
-﻿using Cellm.Users;
-using Microsoft.Extensions.AI;
+﻿using Microsoft.Extensions.AI;
 
 namespace Cellm.Models.Providers.Ollama;
 
@@ -8,8 +7,6 @@ internal class OllamaConfiguration : IProviderConfiguration
     public Provider Id { get => Provider.Ollama; }
 
     public string Name { get => "Ollama"; }
-
-    public Entitlement Entitlement { get => Entitlement.EnableOllamaProvider; }
 
     public string Icon { get => $"AddIn/UserInterface/Resources/{nameof(Provider.Ollama)}.png"; }
 

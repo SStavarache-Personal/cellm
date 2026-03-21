@@ -64,10 +64,10 @@ public partial class RibbonMain : ExcelRibbon
     <ribbon>
         <tabs>
             <tab id="cellm" label="Cellm">
-                {UserGroup()}
                 {PromptGroup()}
                 {ModelGroup()}
                 {ToolGroup()}
+                {ActionsGroup()}
             </tab>
         </tabs>
     </ribbon>

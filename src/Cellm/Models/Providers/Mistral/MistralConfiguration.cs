@@ -1,6 +1,4 @@
-﻿
-using Cellm.Users;
-using Microsoft.Extensions.AI;
+﻿using Microsoft.Extensions.AI;
 
 namespace Cellm.Models.Providers.Mistral;
 
@@ -9,8 +7,6 @@ internal class MistralConfiguration : IProviderConfiguration
     public Provider Id { get => Provider.Mistral; }
 
     public string Name { get => "Mistral"; }
-
-    public Entitlement Entitlement { get => Entitlement.EnableMistralProvider; }
 
     public string Icon { get => $"AddIn/UserInterface/Resources/{nameof(Provider.Mistral)}.png"; }
 

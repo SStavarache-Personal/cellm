@@ -1,4 +1,3 @@
-using Cellm.Users;
 using Microsoft.Extensions.AI;
 
 namespace Cellm.Models.Providers.OpenRouter;
@@ -8,8 +7,6 @@ internal class OpenRouterConfiguration : IProviderConfiguration
     public Provider Id { get => Provider.OpenRouter; }
 
     public string Name { get => "OpenRouter"; }
-
-    public Entitlement Entitlement { get => Entitlement.EnableOpenRouterProvider; }
 
     public string Icon { get => $"AddIn/UserInterface/Resources/{nameof(Provider.OpenRouter)}.svg"; }
 

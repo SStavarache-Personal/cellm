@@ -1,6 +1,4 @@
-﻿
-using Cellm.Users;
-using Microsoft.Extensions.AI;
+﻿using Microsoft.Extensions.AI;
 
 namespace Cellm.Models.Providers.DeepSeek;
 
@@ -9,8 +7,6 @@ internal class DeepSeekConfiguration : IProviderConfiguration
     public Provider Id { get => Provider.DeepSeek; }
 
     public string Name { get => "DeepSeek"; }
-
-    public Entitlement Entitlement { get => Entitlement.EnableDeepSeekProvider; }
 
     public string Icon { get => $"AddIn/UserInterface/Resources/{nameof(Provider.DeepSeek)}.png"; }
 

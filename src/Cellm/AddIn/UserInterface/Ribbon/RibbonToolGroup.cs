@@ -5,7 +5,6 @@ using Cellm.AddIn.UserInterface.Forms;
 using Cellm.Tools.FileReader;
 using Cellm.Tools.FileSearch;
 using Cellm.Tools.ModelContextProtocol;
-using Cellm.Users;
 using ExcelDna.Integration.CustomUI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -260,9 +259,7 @@ public partial class RibbonMain
 
     public bool GetMcpEnabled(IRibbonControl control)
     {
-        var account = CellmAddIn.Services.GetRequiredService<Account>();
-
-        return account.HasEntitlement(Entitlement.EnableModelContextProtocol);
+        return true;
     }
 
     public void ShowAddMcpServerForm(IRibbonControl control)

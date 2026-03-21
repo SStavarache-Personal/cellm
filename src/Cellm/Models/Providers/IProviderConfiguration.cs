@@ -1,5 +1,4 @@
-﻿using Cellm.Users;
-using Microsoft.Extensions.AI;
+﻿using Microsoft.Extensions.AI;
 
 namespace Cellm.Models.Providers;
 
@@ -8,8 +7,6 @@ internal interface IProviderConfiguration
     Provider Id { get; }
 
     string Name { get; }
-
-    Entitlement Entitlement { get; }
 
     string Icon { get; }
 

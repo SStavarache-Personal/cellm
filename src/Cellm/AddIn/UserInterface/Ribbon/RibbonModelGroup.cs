@@ -1,19 +1,20 @@
 using System.Globalization;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Cellm.AddIn.UserInterface.Forms;
 using Cellm.Models.Providers;
 using Cellm.Models.Providers.Anthropic;
 using Cellm.Models.Providers.Aws;
 using Cellm.Models.Providers.Azure;
-using Cellm.Models.Providers.Cellm;
 using Cellm.Models.Providers.DeepSeek;
 using Cellm.Models.Providers.Google;
+using Cellm.Models.Providers.LmStudio;
 using Cellm.Models.Providers.Mistral;
 using Cellm.Models.Providers.Ollama;
 using Cellm.Models.Providers.OpenAi;
 using Cellm.Models.Providers.OpenAiCompatible;
 using Cellm.Models.Providers.OpenRouter;
-using Cellm.Users;
 using ExcelDna.Integration.CustomUI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -38,7 +39,8 @@ public partial class RibbonMain
         ProviderMenu,
 
         ModelComboBox,
-        TemperatureComboBox,
+        ProfileComboBox,
+        EditProfileButton,
 
         CacheToggleButton,
 
@@ -58,8 +60,6 @@ public partial class RibbonMain
         public string MediumModel { get; set; } = string.Empty;
 
         public string LargeModel { get; set; } = string.Empty;
-
-        public Entitlement Entitlement { get; set; } = Entitlement.EnableCellmProvider;
     }
 
     private const string NoPresetsPlaceholder = "(No presets configured)";
@@ -91,15 +91,21 @@ public partial class RibbonMain
                                   onChange="{nameof(OnModelComboBoxChange)}"
                                   getItemCount="{nameof(GetModelComboBoxItemCount)}"
                                   getItemLabel="{nameof(GetModelComboBoxItemLabel)}" />
-                        <comboBox id="{nameof(ModelGroupControlIds.TemperatureComboBox)}"
-                                 label="Temp"
+                        <comboBox id="{nameof(ModelGroupControlIds.ProfileComboBox)}"
+                                 label="Profile"
                                  showLabel="false"
-                                 sizeString="Consistent"
-                                 screentip="Temperature. Controls the balance between deterministic outputs and creative exploration. Fow low values the model will almost always give you the same responses for the same prompts, for high values the responses to the same prompts will vary. Must be a number between 0.0 and 1.0 or Consistent (0.0), Neutral (0.3), or Creative (0.7)."
-                                 getText="{nameof(GetTemperatureText)}"
-                                 onChange="{nameof(OnTemperatureChange)}"
-                                 getItemCount="{nameof(GetTemperatureItemCount)}"
-                                 getItemLabel="{nameof(GetTemperatureItemLabel)}" />
+                                 sizeString="WWWWWWWWW"
+                                 screentip="Profile"
+                                 supertip="Select a saved profile to apply its system prompt, temperature, and max output tokens settings."
+                                 getText="{nameof(GetProfileText)}"
+                                 onChange="{nameof(OnProfileChange)}"
+                                 getItemCount="{nameof(GetProfileItemCount)}"
+                                 getItemLabel="{nameof(GetProfileItemLabel)}" />
+                        <button id="{nameof(ModelGroupControlIds.EditProfileButton)}"
+                                imageMso="PropertySheet"
+                                screentip="Edit profile"
+                                supertip="Edit the current profile or create a new one."
+                                onAction="{nameof(OnEditProfile)}" />
                     </box>
                     {ModelGroupStatistics()}
                 </box>
@@ -159,23 +165,7 @@ public partial class RibbonMain
 
     public bool IsProviderEnabled(IRibbonControl control)
     {
-        var accountConfiguration = CellmAddIn.Services.GetRequiredService<IOptionsMonitor<AccountConfiguration>>();
-
-        if (!accountConfiguration.CurrentValue.IsEnabled)
-        {
-            return true;
-        }
-
-        var account = CellmAddIn.Services.GetRequiredService<Account>();
-
-        if (Enum.TryParse<Provider>(control.Tag, true, out var provider))
-        {
-            return account.HasEntitlement(CellmAddIn.GetProviderConfiguration(provider).Entitlement);
-        }
-
-        _logger.LogWarning("Could not parse tag '{tag}' for menu item '{id}'.", control.Tag, control.Id);
-
-        return false; // Or a default placeholder image
+        return true;
     }
 
     public Bitmap? GetSelectedProviderImage(IRibbonControl control)
@@ -359,6 +349,11 @@ public partial class RibbonMain
     /// </summary>
     private List<string> GetAvailableModelNamesForProvider(Provider provider)
     {
+        if (provider == Provider.LmStudio)
+        {
+            return GetLmStudioModels();
+        }
+
         var modelNames = new List<string>();
         var small = GetModelNameForProvider(provider, "SmallModel");
         var big = GetModelNameForProvider(provider, "MediumModel");
@@ -370,6 +365,39 @@ public partial class RibbonMain
 
         // Remove duplicates
         return modelNames.Distinct().ToList();
+    }
+
+    private List<string> GetLmStudioModels()
+    {
+        try
+        {
+            var lmStudioConfig = GetProviderConfiguration<LmStudioConfiguration>();
+            var baseAddress = lmStudioConfig.BaseAddress.ToString().TrimEnd('/');
+
+            using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
+            var response = httpClient.GetAsync($"{baseAddress}/models").Result;
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return [];
+            }
+
+            var json = response.Content.ReadAsStringAsync().Result;
+            var doc = JsonDocument.Parse(json);
+            var models = doc.RootElement
+                .GetProperty("data")
+                .EnumerateArray()
+                .Select(m => m.GetProperty("id").GetString() ?? string.Empty)
+                .Where(id => !string.IsNullOrEmpty(id))
+                .ToList();
+
+            return models;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Could not fetch LM Studio models: {message}", ex.Message);
+            return [];
+        }
     }
 
     private string GetModelNameForProvider(Provider provider, string modelType)
@@ -471,14 +499,14 @@ public partial class RibbonMain
                 case Provider.Aws:
                     currentBaseAddress = GetProviderConfiguration<AwsConfiguration>()?.BaseAddress?.ToString() ?? "";
                     break;
-                case Provider.Cellm:
-                    currentBaseAddress = GetProviderConfiguration<CellmConfiguration>()?.BaseAddress?.ToString() ?? "";
-                    break;
                 case Provider.DeepSeek:
                     currentBaseAddress = GetProviderConfiguration<DeepSeekConfiguration>()?.BaseAddress?.ToString() ?? "";
                     break;
                 case Provider.Gemini:
                     currentBaseAddress = GetProviderConfiguration<GeminiConfiguration>()?.BaseAddress?.ToString() ?? "";
+                    break;
+                case Provider.LmStudio:
+                    currentBaseAddress = GetProviderConfiguration<LmStudioConfiguration>()?.BaseAddress?.ToString() ?? "";
                     break;
                 case Provider.Mistral:
                     currentBaseAddress = GetProviderConfiguration<MistralConfiguration>()?.BaseAddress?.ToString() ?? "";
@@ -542,7 +570,6 @@ public partial class RibbonMain
     {
         return provider switch
         {
-            Provider.Cellm => false,
             _ => true
         };
     }
@@ -551,140 +578,199 @@ public partial class RibbonMain
     {
         return provider switch
         {
-            Provider.Azure or Provider.Aws or Provider.OpenAiCompatible => true,
+            Provider.Azure or Provider.Aws or Provider.LmStudio or Provider.OpenAiCompatible => true,
             _ => false
         };
     }
 
-    // Array of temperature suggestions
-    private static readonly string[] TemperatureOptions = ["Consistent", "Neutral", "Creative"];
-
-    public string GetTemperatureText(IRibbonControl control)
+    public string GetProfileText(IRibbonControl control)
     {
         try
         {
-            var temperatureAsString = GetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.DefaultTemperature)}");
-
-            if (temperatureAsString == "Consistent")
-            {
-                return temperatureAsString;
-            }
-
-            if (temperatureAsString == "Neutral")
-            {
-                return temperatureAsString;
-            }
-
-            if (temperatureAsString == "Creative")
-            {
-                return temperatureAsString;
-            }
-
-            if (double.TryParse(temperatureAsString.Replace(',', '.'), NumberStyles.Any, CultureInfo.GetCultureInfo("en-US"), out var temperature))
-            {
-                if (temperature == 0)
-                {
-                    return "Consistent";
-                }
-
-                if (temperature == 0.3)
-                {
-                    return "Neutral";
-                }
-
-                if (temperature == 0.7)
-                {
-                    return "Creative";
-                }
-
-                return temperature.ToString("0.0");
-            }
-
-            return "0.0";
+            return GetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.ActiveProfile)}");
         }
         catch (KeyNotFoundException)
         {
-            // If not found, set a default value
-            SetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.DefaultTemperature)}", "0");
-            return "0.0";
+            return "Default";
         }
         catch (Exception ex)
         {
-            _logger.LogError("Error reading temperature: {message}", ex.Message);
-            return "0.0"; // Fallback
+            _logger.LogError("Error reading active profile: {message}", ex.Message);
+            return "Default";
         }
     }
 
-    public void OnTemperatureChange(IRibbonControl control, string temperatureAsString)
+    public void OnProfileChange(IRibbonControl control, string profileName)
     {
-        if (string.IsNullOrWhiteSpace(temperatureAsString))
+        if (string.IsNullOrWhiteSpace(profileName))
         {
-            _logger.LogDebug("Warning: Temperature cannot be empty. Change ignored.");
             _ribbonUi?.InvalidateControl(control.Id);
             return;
         }
 
-        if (temperatureAsString == "Consistent")
+        try
         {
-            temperatureAsString = "0";
-        }
+            var profiles = GetProfiles();
+            var profile = profiles.FirstOrDefault(p => p.Name == profileName);
 
-        if (temperatureAsString == "Neutral")
-        {
-            temperatureAsString = "0.3";
-        }
-
-        if (temperatureAsString == "Creative")
-        {
-            temperatureAsString = "0.7";
-        }
-
-        // Validate that the input is a valid temperature (between 0 and 1)
-        if (double.TryParse(temperatureAsString.Replace(',', '.'), NumberStyles.Any, CultureInfo.GetCultureInfo("en-US"), out var temperature))
-        {
-            if (temperature < 0 || temperature > 1)
+            if (profile is null)
             {
-                MessageBox.Show("Temperature must be between 0 and 1.", "Invalid Temperature",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                _logger.LogWarning("Profile '{profileName}' not found.", profileName);
                 _ribbonUi?.InvalidateControl(control.Id);
                 return;
             }
 
-            try
-            {
-                // Format to ensure consistent display
-                var formattedTemperature = temperature.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
-                SetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.DefaultTemperature)}", formattedTemperature);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug("ERROR updating DefaultTemperature setting: {message}", ex.Message);
-            }
+            // Apply profile settings
+            SetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.ActiveProfile)}", profileName);
+            SetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.DefaultTemperature)}",
+                profile.Temperature.ToString("0.0", CultureInfo.InvariantCulture));
+            SetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.MaxOutputTokens)}", profile.MaxOutputTokens);
         }
-        else
+        catch (Exception ex)
         {
-            MessageBox.Show("Temperature must a number between 0 and 1.", "Invalid Temperature",
-                MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            _ribbonUi?.InvalidateControl(control.Id);
+            _logger.LogError("Error applying profile '{profileName}': {message}", profileName, ex.Message);
         }
     }
 
-    public int GetTemperatureItemCount(IRibbonControl control)
+    public int GetProfileItemCount(IRibbonControl control)
     {
-        // Return the number of temperature options
-        return TemperatureOptions.Length;
+        var profiles = GetProfiles();
+        return profiles.Count == 0 ? 1 : profiles.Count;
     }
 
-    public string GetTemperatureItemLabel(IRibbonControl control, int index)
+    public string GetProfileItemLabel(IRibbonControl control, int index)
     {
-        // Return the temperature option at the specified index
-        if (index >= 0 && index < TemperatureOptions.Length)
+        var profiles = GetProfiles();
+
+        if (profiles.Count == 0)
         {
-            return TemperatureOptions[index];
+            return index == 0 ? "(No profiles)" : string.Empty;
         }
 
-        _logger.LogWarning("Invalid index {index} requested for GetTemperatureItemLabel", index);
-        return string.Empty;
+        return index >= 0 && index < profiles.Count ? profiles[index].Name : string.Empty;
+    }
+
+    public void OnEditProfile(IRibbonControl control)
+    {
+        var profiles = GetProfiles();
+        var activeProfileName = string.Empty;
+
+        try
+        {
+            activeProfileName = GetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.ActiveProfile)}");
+        }
+        catch (KeyNotFoundException) { }
+
+        var activeProfile = profiles.FirstOrDefault(p => p.Name == activeProfileName);
+
+        using var form = activeProfile is not null
+            ? new ProfileForm(activeProfile.Name, activeProfile.SystemPrompt, activeProfile.Temperature, activeProfile.MaxOutputTokens)
+            : new ProfileForm();
+
+        if (form.ShowDialog() != DialogResult.OK)
+        {
+            return;
+        }
+
+        try
+        {
+            if (form.IsDeleted && activeProfile is not null)
+            {
+                // Delete the profile
+                profiles.RemoveAll(p => p.Name == activeProfile.Name);
+                SaveProfiles(profiles);
+
+                // Switch to first available profile or clear
+                var newActive = profiles.FirstOrDefault()?.Name ?? string.Empty;
+                SetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.ActiveProfile)}", newActive);
+
+                if (profiles.Count > 0)
+                {
+                    var firstProfile = profiles[0];
+                    SetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.DefaultTemperature)}",
+                        firstProfile.Temperature.ToString("0.0", CultureInfo.InvariantCulture));
+                    SetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.MaxOutputTokens)}", firstProfile.MaxOutputTokens);
+                }
+            }
+            else
+            {
+                var newProfile = new PromptProfile
+                {
+                    Name = form.ProfileName,
+                    SystemPrompt = form.SystemPrompt,
+                    Temperature = form.Temperature,
+                    MaxOutputTokens = form.MaxOutputTokens
+                };
+
+                if (activeProfile is not null)
+                {
+                    // Update existing: remove old, add new
+                    profiles.RemoveAll(p => p.Name == activeProfile.Name);
+                }
+
+                // Add or replace
+                var existingIndex = profiles.FindIndex(p => p.Name == newProfile.Name);
+                if (existingIndex >= 0)
+                {
+                    profiles[existingIndex] = newProfile;
+                }
+                else
+                {
+                    profiles.Add(newProfile);
+                }
+
+                SaveProfiles(profiles);
+
+                // Apply the profile
+                SetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.ActiveProfile)}", newProfile.Name);
+                SetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.DefaultTemperature)}",
+                    newProfile.Temperature.ToString("0.0", CultureInfo.InvariantCulture));
+                SetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.MaxOutputTokens)}", newProfile.MaxOutputTokens);
+            }
+
+            _ribbonUi?.InvalidateControl(nameof(ModelGroupControlIds.ProfileComboBox));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("Error saving profile: {message}", ex.Message);
+            MessageBox.Show($"Error saving profile: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private List<PromptProfile> GetProfiles()
+    {
+        try
+        {
+            var profilesNode = GetValueAsJsonNode($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.Profiles)}");
+
+            if (profilesNode is JsonArray profilesArray)
+            {
+                return profilesArray
+                    .Select(node => node?.Deserialize<PromptProfile>())
+                    .Where(p => p is not null)
+                    .Cast<PromptProfile>()
+                    .ToList();
+            }
+
+            return [];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Could not read profiles: {message}", ex.Message);
+            return [];
+        }
+    }
+
+    private void SaveProfiles(List<PromptProfile> profiles)
+    {
+        var profilesArray = new JsonArray();
+
+        foreach (var profile in profiles)
+        {
+            profilesArray.Add(JsonSerializer.SerializeToNode(profile));
+        }
+
+        SetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.Profiles)}", profilesArray);
     }
 
     public async Task OnCacheToggled(IRibbonControl control, bool enabled)

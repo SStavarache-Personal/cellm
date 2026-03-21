@@ -1,5 +1,4 @@
-﻿using Cellm.Users;
-using Microsoft.Extensions.AI;
+﻿using Microsoft.Extensions.AI;
 
 namespace Cellm.Models.Providers.Anthropic;
 
@@ -8,8 +7,6 @@ internal class AnthropicConfiguration : IProviderConfiguration
     public Provider Id { get => Provider.Anthropic; }
 
     public string Name { get => "Anthropic"; }
-
-    public Entitlement Entitlement { get => Entitlement.EnableAnthropicProvider; }
 
     public string Icon { get => $"AddIn/UserInterface/Resources/{nameof(Provider.Anthropic)}.png"; }
 

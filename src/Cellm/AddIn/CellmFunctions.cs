@@ -14,33 +14,49 @@ namespace Cellm.AddIn;
 
 public static class CellmFunctions
 {
-    private const string _promptDescription = "Sends a prompt to the default model. Can be used with or without cell ranges as context.";
-    private const string _promptModelDescription = "Sends a prompt to the specified model. Can be used with or without cell ranges as context.";
+    private const string _category = "Cellm";
+
+    private const string _promptDescription =
+        "Sends a prompt to the default LLM and returns the response in a cell. " +
+        "Supports text prompts, cell references, and cell ranges as context.";
+
+    private const string _promptModelDescription =
+        "Sends a prompt to a specific provider and model. " +
+        "Use the format \"Provider/Model\" (e.g., \"OpenAi/gpt-4.1\", \"Anthropic/claude-sonnet-4-5\", \"LmStudio/my-model\").";
 
     private const string _structuredOutputShapeRowDescription = " Multiple output values spill into cells to the right.";
     private const string _structuredOutputShapeColumnDescription = " Multiple output values spill into cells below.";
     private const string _structuredOutputShapeRangeDescription = " The model chooses whether multiple output values should spill into rows and/or columns or not.";
 
-    private const string _promptExample = $"""
-         Example:
+    private const string _promptExample = """
 
-        =PROMPT("Extract named entities", A1:B2, C3:D4)
+        Examples:
+        =PROMPT("Summarize this text", A1)
+        =PROMPT("Classify sentiment as positive/negative", A1:A10)
+        =PROMPT("Translate to French", B2:C5)
         """;
 
     private const string _promptModelExample = """
-        Example:
 
-        =PROMPTMODEL("openai/gpt-4.1", "Extract named entities", A1:B2, C3:D4)
+        Examples:
+        =PROMPTMODEL("OpenAi/gpt-4.1", "Summarize this", A1)
+        =PROMPTMODEL("LmStudio/my-model", "Classify", A1:B10)
         """;
 
     private const string _instructionsName = "Prompt";
-    private const string _instructionsDescription = "The prompt to send to the model (string, cell, or cell range e.g., A1:B2).";
+    private const string _instructionsDescription =
+        "The prompt or instruction to send to the model. Can be a text string, " +
+        "a single cell reference, or a cell range (e.g., A1:B2).";
 
     private const string _cellsName = "Cells";
-    private const string _cellsDescription = "(Optional) One or more cell ranges as context (e.g., A1, B2:C3).";
+    private const string _cellsDescription =
+        "(Optional) Additional cell ranges to include as context. " +
+        "The model can read and use data from these cells. Example: A1, B2:C3.";
 
     private const string _providerAndModelName = "Provider and model";
-    private const string _promptAndModelDescription = @"The provider and model on the form ""{provider}/{model}"" (e.g., openai/gpt-4.1)";
+    private const string _promptAndModelDescription =
+        "The provider and model in the format \"Provider/Model\". " +
+        "Available providers: Anthropic, OpenAi, Gemini, LmStudio, Ollama, Mistral, DeepSeek, OpenRouter, Azure, Aws.";
 
 
     /// <summary>
@@ -55,7 +71,7 @@ public static class CellmFunctions
     /// <returns>
     /// The model's response in a single cell. If an error occurs, it returns the error message.
     /// </returns>
-    [ExcelFunction(Name = "PROMPT", Description = _promptDescription + _promptExample, IsThreadSafe = true, IsVolatile = false)]
+    [ExcelFunction(Name = "PROMPT", Description = _promptDescription + _promptExample, Category = _category, IsThreadSafe = true, IsVolatile = false)]
     public static object Prompt(
         [ExcelArgument(AllowReference = true, Name = _instructionsName, Description = _instructionsDescription)] object instructions,
         [ExcelArgument(AllowReference = true, Name = _cellsName, Description = _cellsDescription)] params object[] ranges)
@@ -69,7 +85,7 @@ public static class CellmFunctions
     /// <summary>
     /// Same as Prompt, but array response spill into cells to the right.
     /// </summary>
-    [ExcelFunction(Name = "PROMPT.TOROW", Description = _promptDescription + _structuredOutputShapeRowDescription, IsThreadSafe = true, IsVolatile = false)]
+    [ExcelFunction(Name = "PROMPT.TOROW", Description = _promptDescription + _structuredOutputShapeRowDescription, Category = _category, IsThreadSafe = true, IsVolatile = false)]
     public static object PromptToRow(
         [ExcelArgument(AllowReference = true, Name = _instructionsName, Description = _instructionsDescription)] object instructions,
         [ExcelArgument(AllowReference = true, Name = _cellsName, Description = _cellsDescription)] params object[] ranges)
@@ -83,7 +99,7 @@ public static class CellmFunctions
     /// <summary>
     /// Same as Prompt, but array response spill into cells below.
     /// </summary>
-    [ExcelFunction(Name = "PROMPT.TOCOLUMN", Description = _promptDescription + _structuredOutputShapeColumnDescription, IsThreadSafe = true, IsVolatile = false)]
+    [ExcelFunction(Name = "PROMPT.TOCOLUMN", Description = _promptDescription + _structuredOutputShapeColumnDescription, Category = _category, IsThreadSafe = true, IsVolatile = false)]
     public static object PromptToColumn(
         [ExcelArgument(AllowReference = true, Name = _instructionsName, Description = _instructionsDescription)] object instructions,
         [ExcelArgument(AllowReference = true, Name = _cellsName, Description = _cellsDescription)] params object[] ranges)
@@ -97,7 +113,7 @@ public static class CellmFunctions
     /// <summary>
     /// Same as Prompt, but array response spill into rows and columns.
     /// </summary>
-    [ExcelFunction(Name = "PROMPT.TORANGE", Description = _promptDescription + _structuredOutputShapeRangeDescription, IsThreadSafe = true, IsVolatile = false)]
+    [ExcelFunction(Name = "PROMPT.TORANGE", Description = _promptDescription + _structuredOutputShapeRangeDescription, Category = _category, IsThreadSafe = true, IsVolatile = false)]
     public static object PromptToRange(
         [ExcelArgument(AllowReference = true, Name = _instructionsName, Description = _instructionsDescription)] object instructions,
         [ExcelArgument(AllowReference = true, Name = _cellsName, Description = _cellsDescription)] params object[] ranges)
@@ -123,7 +139,7 @@ public static class CellmFunctions
     /// <returns>
     /// The model's response in a single cell. If an error occurs, it returns the error message.
     /// </returns>
-    [ExcelFunction(Name = "PROMPTMODEL", Description = _promptModelDescription + _promptModelExample, IsThreadSafe = true, IsVolatile = false)]
+    [ExcelFunction(Name = "PROMPTMODEL", Description = _promptModelDescription + _promptModelExample, Category = _category, IsThreadSafe = true, IsVolatile = false)]
     public static object PromptModel(
         [ExcelArgument(AllowReference = true, Name = _providerAndModelName, Description = _promptAndModelDescription)] object providerAndModel,
         [ExcelArgument(AllowReference = true, Name = _instructionsName, Description = _instructionsDescription)] object instructions,
@@ -139,7 +155,7 @@ public static class CellmFunctions
     /// <summary>
     /// Same as PromptModel, but array response spill into cells to the right.
     /// </summary>
-    [ExcelFunction(Name = "PROMPTMODEL.TOROW", Description = _promptModelDescription + _structuredOutputShapeRowDescription, IsThreadSafe = true, IsVolatile = false)]
+    [ExcelFunction(Name = "PROMPTMODEL.TOROW", Description = _promptModelDescription + _structuredOutputShapeRowDescription, Category = _category, IsThreadSafe = true, IsVolatile = false)]
     public static object PromptModelToRow(
         [ExcelArgument(AllowReference = true, Name = _providerAndModelName, Description = _promptAndModelDescription)] object providerAndModel,
         [ExcelArgument(AllowReference = true, Name = _instructionsName, Description = _instructionsDescription)] object instructions,
@@ -155,7 +171,7 @@ public static class CellmFunctions
     /// <summary>
     /// Same as PromptModel, but array response spill into cells below.
     /// </summary>
-    [ExcelFunction(Name = "PROMPTMODEL.TOCOLUMN", Description = _promptModelDescription + _structuredOutputShapeRowDescription, IsThreadSafe = true, IsVolatile = false)]
+    [ExcelFunction(Name = "PROMPTMODEL.TOCOLUMN", Description = _promptModelDescription + _structuredOutputShapeColumnDescription, Category = _category, IsThreadSafe = true, IsVolatile = false)]
     public static object PromptModelToColumn(
         [ExcelArgument(AllowReference = true, Name = _providerAndModelName, Description = _promptAndModelDescription)] object providerAndModel,
         [ExcelArgument(AllowReference = true, Name = _instructionsName, Description = _instructionsDescription)] object instructions,
@@ -171,7 +187,7 @@ public static class CellmFunctions
     /// <summary>
     /// Same as PromptModel, but array responses spill into rows and columns.
     /// </summary>
-    [ExcelFunction(Name = "PROMPTMODEL.TORANGE", Description = _promptModelDescription, IsThreadSafe = true, IsVolatile = false)]
+    [ExcelFunction(Name = "PROMPTMODEL.TORANGE", Description = _promptModelDescription + _structuredOutputShapeRangeDescription, Category = _category, IsThreadSafe = true, IsVolatile = false)]
     public static object PromptModelToCell(
         [ExcelArgument(AllowReference = true, Name = _providerAndModelName, Description = _promptAndModelDescription)] object providerAndModel,
         [ExcelArgument(AllowReference = true, Name = _instructionsName, Description = _instructionsDescription)] object instructions,
@@ -300,13 +316,20 @@ public static class CellmFunctions
                 .ToString();
 
             var cellmAddInConfiguration = CellmAddIn.Services.GetRequiredService<IOptionsMonitor<CellmAddInConfiguration>>();
+            var activeProfileName = cellmAddInConfiguration.CurrentValue.ActiveProfile;
+            var activeProfile = cellmAddInConfiguration.CurrentValue.Profiles
+                .FirstOrDefault(p => p.Name == activeProfileName);
+
+            var systemMessage = !string.IsNullOrWhiteSpace(activeProfile?.SystemPrompt)
+                ? activeProfile.SystemPrompt
+                : SystemMessages.SystemMessage(arguments.Provider, arguments.Model, DateTime.Today);
 
             var prompt = new PromptBuilder()
                 .SetModel(arguments.Model)
                 .SetTemperature(arguments.Temperature)
-                .SetMaxOutputTokens(cellmAddInConfiguration.CurrentValue.MaxOutputTokens)
+                .SetMaxOutputTokens(activeProfile?.MaxOutputTokens ?? cellmAddInConfiguration.CurrentValue.MaxOutputTokens)
                 .SetOutputShape(arguments.OutputShape)
-                .AddSystemMessage(SystemMessages.SystemMessage(arguments.Provider, arguments.Model, DateTime.Today))
+                .AddSystemMessage(systemMessage)
                 .AddUserMessage(userMessage)
                 .Build();
 

@@ -1,5 +1,4 @@
-﻿using Cellm.Users;
-using Microsoft.Extensions.AI;
+﻿using Microsoft.Extensions.AI;
 
 namespace Cellm.Models.Providers.Azure;
 
@@ -8,8 +7,6 @@ internal class AzureConfiguration : IProviderConfiguration
     public Provider Id { get => Provider.Azure; }
 
     public string Name { get => "Azure"; }
-
-    public Entitlement Entitlement { get => Entitlement.EnableAzureProvider; }
 
     public string Icon { get => $"AddIn/UserInterface/Resources/{nameof(Provider.Azure)}.png"; }
 

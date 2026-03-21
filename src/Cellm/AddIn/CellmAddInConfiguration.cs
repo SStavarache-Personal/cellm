@@ -18,6 +18,10 @@ public class CellmAddInConfiguration
 
     public int CacheTimeoutInSeconds { get; init; } = 3600;
 
+    public List<PromptProfile> Profiles { get; init; } = [];
+
+    public string ActiveProfile { get; init; } = string.Empty;
+
     public List<string> Models { get; init; } = [];
 
     public bool EnableFileLogging { get; init; } = true;

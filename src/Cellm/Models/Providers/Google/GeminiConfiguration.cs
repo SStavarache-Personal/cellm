@@ -1,5 +1,4 @@
-﻿using Cellm.Users;
-using Microsoft.Extensions.AI;
+﻿using Microsoft.Extensions.AI;
 
 namespace Cellm.Models.Providers.Google;
 
@@ -8,8 +7,6 @@ internal class GeminiConfiguration : IProviderConfiguration
     public Provider Id { get => Provider.Gemini; }
 
     public string Name { get => "Gemini"; }
-
-    public Entitlement Entitlement { get => Entitlement.EnableGeminiProvider; }
 
     public string Icon { get => $"AddIn/UserInterface/Resources/{nameof(Provider.Gemini)}.png"; }
 

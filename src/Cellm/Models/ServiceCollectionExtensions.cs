@@ -14,16 +14,15 @@ using Cellm.Models.Providers;
 using Cellm.Models.Providers.Anthropic;
 using Cellm.Models.Providers.Aws;
 using Cellm.Models.Providers.Azure;
-using Cellm.Models.Providers.Cellm;
 using Cellm.Models.Providers.DeepSeek;
 using Cellm.Models.Providers.Google;
+using Cellm.Models.Providers.LmStudio;
 using Cellm.Models.Providers.Mistral;
 using Cellm.Models.Providers.Ollama;
 using Cellm.Models.Providers.OpenAi;
 using Cellm.Models.Providers.OpenAiCompatible;
 using Cellm.Models.Providers.OpenRouter;
 using Cellm.Models.Resilience;
-using Cellm.Users;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -144,9 +143,6 @@ internal static class ServiceCollectionExtensions
         services
             .AddKeyedChatClient(Provider.Anthropic, serviceProvider =>
             {
-                var account = serviceProvider.GetRequiredService<Account>();
-                account.ThrowIfNotEntitled(Entitlement.EnableAzureProvider);
-
                 var anthropicConfiguration = serviceProvider.GetRequiredService<IOptionsMonitor<AnthropicConfiguration>>();
                 var resilientHttpClient = serviceProvider.GetResilientHttpClient(Provider.Anthropic);
 
@@ -170,9 +166,6 @@ internal static class ServiceCollectionExtensions
         services
             .AddKeyedChatClient(Provider.Aws, serviceProvider =>
             {
-                var account = serviceProvider.GetRequiredService<Account>();
-                account.ThrowIfNotEntitled(Entitlement.EnableAwsProvider);
-
                 var awsConfiguration = serviceProvider.GetRequiredService<IOptionsMonitor<AwsConfiguration>>();
 
                 if (string.IsNullOrWhiteSpace(awsConfiguration.CurrentValue.ApiKey))
@@ -204,9 +197,6 @@ internal static class ServiceCollectionExtensions
         services
             .AddKeyedChatClient(Provider.Azure, serviceProvider =>
             {
-                var account = serviceProvider.GetRequiredService<Account>();
-                account.ThrowIfNotEntitled(Entitlement.EnableAzureProvider);
-
                 var azureConfiguration = serviceProvider.GetRequiredService<IOptionsMonitor<AzureConfiguration>>();
 
                 if (string.IsNullOrWhiteSpace(azureConfiguration.CurrentValue.ApiKey))
@@ -224,45 +214,11 @@ internal static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddCellmChatClient(this IServiceCollection services)
-    {
-        services
-            .AddKeyedChatClient(Provider.Cellm, serviceProvider =>
-            {
-                var account = serviceProvider.GetRequiredService<Account>();
-                account.ThrowIfNotEntitled(Entitlement.EnableCellmProvider);
-
-                var accountConfiguration = serviceProvider.GetRequiredService<IOptionsMonitor<AccountConfiguration>>();
-
-                if (string.IsNullOrWhiteSpace(accountConfiguration.CurrentValue.ApiKey))
-                {
-                    throw new CellmException($"Invalid {Provider.Cellm} credentials. Please login again.");
-                }
-
-                var cellmConfiguration = serviceProvider.GetRequiredService<IOptionsMonitor<CellmConfiguration>>();
-                var resilientHttpClient = serviceProvider.GetResilientHttpClient(Provider.Cellm);
-
-                var apiAuthentication = new Mistral.SDK.APIAuthentication(accountConfiguration.CurrentValue.ApiKey);
-                var cellmClient = new MistralClient(apiAuthentication, resilientHttpClient)
-                {
-                    ApiUrlFormat = $"{cellmConfiguration.CurrentValue.BaseAddress.ToString().TrimEnd('/')}/{{1}}"
-                };
-
-                return cellmClient.Completions;
-            }, ServiceLifetime.Transient)
-            .UseFunctionInvocation();
-
-        return services;
-    }
-
     public static IServiceCollection AddDeepSeekChatClient(this IServiceCollection services)
     {
         services
             .AddKeyedChatClient(Provider.DeepSeek, serviceProvider =>
             {
-                var account = serviceProvider.GetRequiredService<Account>();
-                account.ThrowIfNotEntitled(Entitlement.EnableDeepSeekProvider);
-
                 var deepSeekConfiguration = serviceProvider.GetRequiredService<IOptionsMonitor<DeepSeekConfiguration>>();
                 var resilientHttpClient = serviceProvider.GetResilientHttpClient(Provider.DeepSeek);
 
@@ -291,9 +247,6 @@ internal static class ServiceCollectionExtensions
         services
             .AddKeyedChatClient(Provider.Gemini, serviceProvider =>
             {
-                var account = serviceProvider.GetRequiredService<Account>();
-                account.ThrowIfNotEntitled(Entitlement.EnableGeminiProvider);
-
                 var geminiConfiguration = serviceProvider.GetRequiredService<IOptionsMonitor<GeminiConfiguration>>();
                 var resilientHttpClient = serviceProvider.GetResilientHttpClient(Provider.Gemini);
 
@@ -322,9 +275,6 @@ internal static class ServiceCollectionExtensions
         services
             .AddKeyedChatClient(Provider.Mistral, serviceProvider =>
             {
-                var account = serviceProvider.GetRequiredService<Account>();
-                account.ThrowIfNotEntitled(Entitlement.EnableMistralProvider);
-
                 var mistralConfiguration = serviceProvider.GetRequiredService<IOptionsMonitor<MistralConfiguration>>();
                 var resilientHttpClient = serviceProvider.GetResilientHttpClient(Provider.Mistral);
 
@@ -347,9 +297,6 @@ internal static class ServiceCollectionExtensions
         services
             .AddKeyedChatClient(Provider.Ollama, serviceProvider =>
             {
-                var account = serviceProvider.GetRequiredService<Account>();
-                account.ThrowIfNotEntitled(Entitlement.EnableOllamaProvider);
-
                 var ollamaConfiguration = serviceProvider.GetRequiredService<IOptionsMonitor<OllamaConfiguration>>();
 
                 // Use Uri constructor - OllamaSharp manages its own HttpClient internally
@@ -369,9 +316,6 @@ internal static class ServiceCollectionExtensions
         services
             .AddKeyedChatClient(Provider.OpenAi, serviceProvider =>
             {
-                var account = serviceProvider.GetRequiredService<Account>();
-                account.ThrowIfNotEntitled(Entitlement.EnableOpenAiProvider);
-
                 var openAiConfiguration = serviceProvider.GetRequiredService<IOptionsMonitor<OpenAiConfiguration>>();
 
                 if (string.IsNullOrWhiteSpace(openAiConfiguration.CurrentValue.ApiKey))
@@ -388,25 +332,43 @@ internal static class ServiceCollectionExtensions
         return services;
     }
 
+    public static IServiceCollection AddLmStudioChatClient(this IServiceCollection services)
+    {
+        services
+            .AddKeyedChatClient(Provider.LmStudio, serviceProvider =>
+            {
+                var lmStudioConfiguration = serviceProvider.GetRequiredService<IOptionsMonitor<LmStudioConfiguration>>();
+                var resilientHttpClient = serviceProvider.GetResilientHttpClient(Provider.LmStudio);
+
+                if (string.IsNullOrWhiteSpace(lmStudioConfiguration.CurrentValue.ApiKey))
+                {
+                    throw new CellmException($"Empty {nameof(LmStudioConfiguration.ApiKey)} for {Provider.LmStudio}. Please set your API key.");
+                }
+
+                var openAiClient = new OpenAIClient(
+                    new ApiKeyCredential(lmStudioConfiguration.CurrentValue.ApiKey),
+                    new OpenAIClientOptions
+                    {
+                        Transport = new HttpClientPipelineTransport(resilientHttpClient),
+                        Endpoint = lmStudioConfiguration.CurrentValue.BaseAddress
+                    });
+
+                return openAiClient
+                    .GetChatClient(lmStudioConfiguration.CurrentValue.DefaultModel)
+                    .AsIChatClient();
+            }, ServiceLifetime.Transient)
+            .UseFunctionInvocation();
+
+        return services;
+    }
+
     public static IServiceCollection AddOpenAiCompatibleChatClient(this IServiceCollection services)
     {
         services
             .AddKeyedChatClient(Provider.OpenAiCompatible, serviceProvider =>
             {
-                var account = serviceProvider.GetRequiredService<Account>();
-                account.ThrowIfNotEntitled(Entitlement.EnableOpenAiCompatibleProvider);
-
                 var openAiCompatibleConfiguration = serviceProvider.GetRequiredService<IOptionsMonitor<OpenAiCompatibleConfiguration>>();
                 var resilientHttpClient = serviceProvider.GetResilientHttpClient(Provider.OpenAiCompatible);
-
-                if (openAiCompatibleConfiguration.CurrentValue.BaseAddress.IsLoopback)
-                {
-                    account.ThrowIfNotEntitled(Entitlement.EnableOpenAiCompatibleProviderLocalModels);
-                }
-                else
-                {
-                    account.ThrowIfNotEntitled(Entitlement.EnableOpenAiCompatibleProviderHostedModels);
-                }
 
                 if (string.IsNullOrWhiteSpace(openAiCompatibleConfiguration.CurrentValue.ApiKey))
                 {
@@ -435,9 +397,6 @@ internal static class ServiceCollectionExtensions
         services
             .AddKeyedChatClient(Provider.OpenRouter, serviceProvider =>
             {
-                var account = serviceProvider.GetRequiredService<Account>();
-                account.ThrowIfNotEntitled(Entitlement.EnableOpenRouterProvider);
-
                 var openRouterConfiguration = serviceProvider.GetRequiredService<IOptionsMonitor<OpenRouterConfiguration>>();
                 var resilientHttpClient = serviceProvider.GetResilientHttpClient(Provider.OpenRouter);
 

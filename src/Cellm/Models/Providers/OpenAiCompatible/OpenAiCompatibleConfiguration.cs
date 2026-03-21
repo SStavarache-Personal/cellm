@@ -1,5 +1,4 @@
-﻿using Cellm.Users;
-using Microsoft.Extensions.AI;
+﻿using Microsoft.Extensions.AI;
 
 namespace Cellm.Models.Providers.OpenAiCompatible;
 
@@ -8,8 +7,6 @@ internal class OpenAiCompatibleConfiguration : IProviderConfiguration
     public Provider Id { get => Provider.OpenAiCompatible; }
 
     public string Name { get => "OpenAI-compatible API"; }
-
-    public Entitlement Entitlement { get => Entitlement.EnableOpenAiCompatibleProvider; }
 
     public string Icon { get => $"AddIn/UserInterface/Resources/{nameof(Provider.OpenAi)}.png"; }
 

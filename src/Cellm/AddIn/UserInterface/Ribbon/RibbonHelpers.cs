@@ -5,7 +5,6 @@ using Cellm.Models.Providers;
 using Cellm.Models.Providers.Anthropic;
 using Cellm.Models.Providers.Aws;
 using Cellm.Models.Providers.Azure;
-using Cellm.Models.Providers.Cellm;
 using Cellm.Models.Providers.DeepSeek;
 using Cellm.Models.Providers.Google;
 using Cellm.Models.Providers.Mistral;

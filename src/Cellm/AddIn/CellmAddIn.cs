@@ -1,5 +1,4 @@
 ﻿using System.Reflection;
-using Cellm.AddIn.Configuration;
 using Cellm.AddIn.Exceptions;
 using Cellm.Models;
 using Cellm.Models.Behaviors;
@@ -8,9 +7,9 @@ using Cellm.Models.Providers.Anthropic;
 using Cellm.Models.Providers.Aws;
 using Cellm.Models.Providers.Azure;
 using Cellm.Models.Providers.Behaviors;
-using Cellm.Models.Providers.Cellm;
 using Cellm.Models.Providers.DeepSeek;
 using Cellm.Models.Providers.Google;
+using Cellm.Models.Providers.LmStudio;
 using Cellm.Models.Providers.Mistral;
 using Cellm.Models.Providers.Ollama;
 using Cellm.Models.Providers.OpenAi;
@@ -20,7 +19,6 @@ using Cellm.Models.Resilience;
 using Cellm.Tools;
 using Cellm.Tools.FileReader;
 using Cellm.Tools.ModelContextProtocol;
-using Cellm.Users;
 using ExcelDna.Integration;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
@@ -45,14 +43,12 @@ public class CellmAddIn : IExcelAddIn
         ExcelIntegration.RegisterUnhandledExceptionHandler(obj =>
         {
             var e = (Exception)obj;
-            SentrySdk.CaptureException(e);
             return e.Message;
         });
     }
 
     public void AutoClose()
     {
-        SentrySdk.Flush();
         DisposeServices();
     }
 
@@ -87,12 +83,11 @@ public class CellmAddIn : IExcelAddIn
     internal static ServiceCollection ConfigureServices(ServiceCollection services, IConfiguration configuration, string? logPath = null)
     {
         services
-            .Configure<AccountConfiguration>(configuration.GetRequiredSection(nameof(AccountConfiguration)))
             .Configure<AnthropicConfiguration>(configuration.GetRequiredSection(nameof(AnthropicConfiguration)))
             .Configure<AwsConfiguration>(configuration.GetRequiredSection(nameof(AwsConfiguration)))
             .Configure<AzureConfiguration>(configuration.GetRequiredSection(nameof(AzureConfiguration)))
-            .Configure<CellmConfiguration>(configuration.GetRequiredSection(nameof(CellmConfiguration)))
             .Configure<GeminiConfiguration>(configuration.GetRequiredSection(nameof(GeminiConfiguration)))
+            .Configure<LmStudioConfiguration>(configuration.GetRequiredSection(nameof(LmStudioConfiguration)))
             .Configure<CellmAddInConfiguration>(configuration.GetRequiredSection(nameof(CellmAddInConfiguration)))
             .Configure<DeepSeekConfiguration>(configuration.GetRequiredSection(nameof(DeepSeekConfiguration)))
             .Configure<MistralConfiguration>(configuration.GetRequiredSection(nameof(MistralConfiguration)))
@@ -101,13 +96,9 @@ public class CellmAddIn : IExcelAddIn
             .Configure<OpenAiConfiguration>(configuration.GetRequiredSection(nameof(OpenAiConfiguration)))
             .Configure<OpenAiCompatibleConfiguration>(configuration.GetRequiredSection(nameof(OpenAiCompatibleConfiguration)))
             .Configure<OpenRouterConfiguration>(configuration.GetRequiredSection(nameof(OpenRouterConfiguration)))
-            .Configure<ResilienceConfiguration>(configuration.GetRequiredSection(nameof(ResilienceConfiguration)))
-            .Configure<SentryConfiguration>(configuration.GetRequiredSection(nameof(SentryConfiguration)));
+            .Configure<ResilienceConfiguration>(configuration.GetRequiredSection(nameof(ResilienceConfiguration)));
 
         // Logging
-        var sentryConfiguration = configuration.GetRequiredSection(nameof(SentryConfiguration)).Get<SentryConfiguration>()
-            ?? throw new NullReferenceException(nameof(SentryConfiguration));
-
         var cellmAddInConfiguration = configuration.GetRequiredSection(nameof(CellmAddInConfiguration)).Get<CellmAddInConfiguration>()
             ?? throw new NullReferenceException(nameof(CellmAddInConfiguration));
 
@@ -137,19 +128,6 @@ public class CellmAddIn : IExcelAddIn
                   loggingBuilder.AddSerilog(serilogLogger);
               }
 
-              loggingBuilder.AddSentry(sentryLoggingOptions =>
-              {
-                  sentryLoggingOptions.InitializeSdk = sentryConfiguration.IsEnabled;
-                  sentryLoggingOptions.Release = GetReleaseVersion();
-                  sentryLoggingOptions.Environment = sentryConfiguration.Environment;
-                  sentryLoggingOptions.Dsn = sentryConfiguration.Dsn;
-                  sentryLoggingOptions.Debug = sentryConfiguration.Debug;
-                  sentryLoggingOptions.TracesSampleRate = sentryConfiguration.TracesSampleRate;
-                  sentryLoggingOptions.ProfilesSampleRate = sentryConfiguration.ProfilesSampleRate;
-                  sentryLoggingOptions.Environment = sentryConfiguration.Environment;
-                  sentryLoggingOptions.AutoSessionTracking = true;
-                  sentryLoggingOptions.AddIntegration(new ProfilingIntegration());
-              });
           });
 
         // Mediatr
@@ -158,7 +136,6 @@ public class CellmAddIn : IExcelAddIn
             {
                 cfg.LicenseKey = cellmAddInConfiguration.MediatrLicenseKey;
                 cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly());
-                cfg.AddBehavior<SentryBehavior<ProviderRequest, ProviderResponse>>(ServiceLifetime.Singleton);
                 cfg.AddBehavior<ToolBehavior<ProviderRequest, ProviderResponse>>(ServiceLifetime.Singleton);
                 cfg.AddBehavior<ProviderBehavior<ProviderRequest, ProviderResponse>>(ServiceLifetime.Singleton);
                 cfg.AddBehavior<CacheBehavior<ProviderRequest, ProviderResponse>>(ServiceLifetime.Singleton);
@@ -171,18 +148,17 @@ public class CellmAddIn : IExcelAddIn
 
         // Internals
         var resilienceConfiguration = configuration.GetRequiredSection(nameof(ResilienceConfiguration)).Get<ResilienceConfiguration>()
-            ?? throw new NullReferenceException(nameof(SentryConfiguration));
+            ?? throw new NullReferenceException(nameof(ResilienceConfiguration));
 
         services
             .AddSingleton(configuration)
             .AddTransient<ArgumentParser>()
-            .AddSingleton<Account>()
             .AddSingleton<Client>()
             .AddRateLimiter(resilienceConfiguration)
             .AddResilientHttpClient(resilienceConfiguration, cellmAddInConfiguration, Provider.Anthropic)
-            .AddResilientHttpClient(resilienceConfiguration, cellmAddInConfiguration, Provider.Cellm)
             .AddResilientHttpClient(resilienceConfiguration, cellmAddInConfiguration, Provider.DeepSeek)
             .AddResilientHttpClient(resilienceConfiguration, cellmAddInConfiguration, Provider.Gemini)
+            .AddResilientHttpClient(resilienceConfiguration, cellmAddInConfiguration, Provider.LmStudio)
             .AddResilientHttpClient(resilienceConfiguration, cellmAddInConfiguration, Provider.Mistral)
             .AddResilientHttpClient(resilienceConfiguration, cellmAddInConfiguration, Provider.Ollama)
             .AddResilientHttpClient(resilienceConfiguration, cellmAddInConfiguration, Provider.OpenAiCompatible)
@@ -199,9 +175,9 @@ public class CellmAddIn : IExcelAddIn
             .AddAnthropicChatClient()
             .AddAwsChatClient()
             .AddAzureChatClient()
-            .AddCellmChatClient()
             .AddDeepSeekChatClient()
             .AddGeminiChatClient()
+            .AddLmStudioChatClient()
             .AddMistralChatClient()
             .AddOllamaChatClient()
             .AddOpenAiChatClient()
@@ -247,9 +223,9 @@ public class CellmAddIn : IExcelAddIn
             Services.GetRequiredService<IOptionsMonitor<AnthropicConfiguration>>().CurrentValue,
             Services.GetRequiredService<IOptionsMonitor<AwsConfiguration>>().CurrentValue,
             Services.GetRequiredService<IOptionsMonitor<AzureConfiguration>>().CurrentValue,
-            Services.GetRequiredService<IOptionsMonitor<CellmConfiguration>>().CurrentValue,
             Services.GetRequiredService<IOptionsMonitor<DeepSeekConfiguration>>().CurrentValue,
             Services.GetRequiredService<IOptionsMonitor<GeminiConfiguration>>().CurrentValue,
+            Services.GetRequiredService<IOptionsMonitor<LmStudioConfiguration>>().CurrentValue,
             Services.GetRequiredService<IOptionsMonitor<MistralConfiguration>>().CurrentValue,
             Services.GetRequiredService<IOptionsMonitor<OllamaConfiguration>>().CurrentValue,
             Services.GetRequiredService<IOptionsMonitor<OpenAiConfiguration>>().CurrentValue,

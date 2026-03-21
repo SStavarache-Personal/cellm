@@ -4,7 +4,6 @@ using System.Runtime.CompilerServices;
 using Cellm.AddIn;
 using Cellm.Tools.ModelContextProtocol;
 using Cellm.Tools.ModelContextProtocol.Exceptions;
-using Cellm.Users;
 using MediatR;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
@@ -14,7 +13,6 @@ using ModelContextProtocol.Client;
 namespace Cellm.Models.Behaviors;
 
 internal class ToolBehavior<TRequest, TResponse>(
-  Account account,
   IOptionsMonitor<CellmAddInConfiguration> cellmAddInConfiguration,
   IMcpConfigurationService mcpConfigurationService,
   IEnumerable<AIFunction> functions,
@@ -33,9 +31,7 @@ internal class ToolBehavior<TRequest, TResponse>(
             request.Prompt.Options.Tools = [.. functions.Where(f => cellmAddInConfiguration.CurrentValue.EnableTools[f.Name])];
         }
 
-        var enableModelContextProtocol = await account.HasEntitlementAsync(Entitlement.EnableModelContextProtocol, cancellationToken).ConfigureAwait(false);
-
-        if (cellmAddInConfiguration.CurrentValue.EnableModelContextProtocolServers.Any(t => t.Value) && enableModelContextProtocol)
+        if (cellmAddInConfiguration.CurrentValue.EnableModelContextProtocolServers.Any(t => t.Value))
         {
             await foreach (var tool in GetMcpToolsAsync(cancellationToken))
             {
