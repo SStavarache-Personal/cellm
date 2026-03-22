@@ -174,14 +174,14 @@ public class ArgumentParser(IConfiguration configuration)
         // Add header row
         for (var c = 1; c < numberOfRenderedColumns; c++)
         {
-            table[0, c] = GetColumnName(range.ColumnFirst + c - 1);
+            table[0, c] = c.ToString();
             maxColumnWidth[c] = table[0, c].Length;
         }
 
         // Add enumeration column
         for (var r = 0; r < numberOfRows; r++)
         {
-            table[r + 1, 0] = GetRowName(range.RowFirst + r);
+            table[r + 1, 0] = (r + 1).ToString();
         }
 
         // Parse cells and track empty rows, empty columns, and max column width along the way
@@ -275,10 +275,7 @@ public class ArgumentParser(IConfiguration configuration)
 
         if (rowsWithValues.Count == 0)
         {
-            return $"The user has provided the cell range " +
-                   $"{GetColumnName(range.ColumnFirst)}{GetRowName(range.RowFirst)}:" +
-                   $"{GetColumnName(range.ColumnFirst + values.GetLength(1) - 1)}{GetRowName(range.RowFirst + values.GetLength(0) - 1)}, " +
-                   $"but all cells are empty.";
+            return "The user has provided a cell range, but all cells are empty.";
         }
 
         return tableBuilder.ToString();

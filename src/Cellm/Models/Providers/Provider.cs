@@ -6,6 +6,7 @@ public enum Provider
     Aws,
     Azure,
     DeepSeek,
+    FoundryLocal,
     Gemini,
     LmStudio,
     Mistral,

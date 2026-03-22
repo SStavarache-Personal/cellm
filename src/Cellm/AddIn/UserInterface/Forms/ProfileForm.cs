@@ -6,15 +6,18 @@ public partial class ProfileForm : Form
     public string SystemPrompt => systemPromptTextBox.Text;
     public double Temperature => (double)temperatureNumeric.Value;
     public int MaxOutputTokens => (int)maxOutputTokensNumeric.Value;
+    public ThinkingLevel ThinkingLevel => (ThinkingLevel)thinkingLevelComboBox.SelectedIndex;
     public bool IsDeleted { get; private set; }
 
     private readonly bool _isEditMode;
 
-    public ProfileForm(string? name = null, string? systemPrompt = null, double temperature = 0, int maxOutputTokens = 8192)
+    public ProfileForm(string? name = null, string? systemPrompt = null, double temperature = 0, int maxOutputTokens = 8192, ThinkingLevel thinkingLevel = ThinkingLevel.Off)
     {
         InitializeComponent();
 
         _isEditMode = name is not null;
+
+        thinkingLevelComboBox.SelectedIndex = (int)thinkingLevel;
 
         if (_isEditMode)
         {

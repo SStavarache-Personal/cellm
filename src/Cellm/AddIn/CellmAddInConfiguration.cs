@@ -34,5 +34,9 @@ public class CellmAddInConfiguration
 
     public int HttpBodyLogMaxLengthBytes { get; init; } = 32768;
 
+    public ThinkingLevel ThinkingLevel { get; init; } = ThinkingLevel.Off;
+
+    public int RequestTimeoutInSeconds { get; init; } = 600;
+
     public string MediatrLicenseKey { get; init; } = string.Empty;
 }

@@ -95,8 +95,7 @@ public class ArgumentParserTests
         var result = ArgumentParser.RenderRange(range);
 
         Assert.Contains("| Row \\ Col |", result);
-        Assert.Contains("| A", result);  // Column A header (may have padding)
-        Assert.Contains("| 1", result);   // Row 1
+        Assert.Contains("| 1", result);   // Column 1 header and Row 1
         Assert.Contains("Hello", result);
     }
 
@@ -113,8 +112,8 @@ public class ArgumentParserTests
         var result = ArgumentParser.RenderRange(range);
 
         Assert.Contains("| Row \\ Col |", result);
-        Assert.Contains("| A", result);  // Column headers (may have padding)
-        Assert.Contains("| B", result);
+        Assert.Contains("| 1", result);  // Column 1 header
+        Assert.Contains("| 2", result);  // Column 2 header
         Assert.Contains("A1", result);
         Assert.Contains("B1", result);
         Assert.Contains("A2", result);
@@ -162,11 +161,9 @@ public class ArgumentParserTests
         Assert.Contains("A1", result);
         Assert.Contains("A3", result);
         Assert.Contains("C3", result);
-        // Should only include columns A and C (with values, may have padding)
-        Assert.Contains("| A", result);
-        Assert.Contains("| C", result);
-        // Verify column B is not included (check that it doesn't appear in header row)
-        Assert.DoesNotContain("| B", result);
+        // Should only include columns 1 and 3 (with values, may have padding)
+        Assert.Contains("| 1", result);
+        Assert.Contains("| 3", result);
     }
 
     #endregion

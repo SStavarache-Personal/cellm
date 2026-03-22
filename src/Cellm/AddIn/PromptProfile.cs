@@ -9,4 +9,6 @@ public class PromptProfile
     public double Temperature { get; init; }
 
     public int MaxOutputTokens { get; init; } = 8192;
+
+    public ThinkingLevel ThinkingLevel { get; init; } = ThinkingLevel.Off;
 }

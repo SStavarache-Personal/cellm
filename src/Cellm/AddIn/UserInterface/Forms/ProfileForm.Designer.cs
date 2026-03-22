@@ -10,6 +10,8 @@ partial class ProfileForm
     private System.Windows.Forms.NumericUpDown temperatureNumeric;
     private System.Windows.Forms.Label maxOutputTokensLabel;
     private System.Windows.Forms.NumericUpDown maxOutputTokensNumeric;
+    private System.Windows.Forms.Label thinkingLevelLabel;
+    private System.Windows.Forms.ComboBox thinkingLevelComboBox;
     private System.Windows.Forms.Button okButton;
     private System.Windows.Forms.Button cancelButton;
     private System.Windows.Forms.Button deleteButton;
@@ -26,6 +28,8 @@ partial class ProfileForm
         temperatureNumeric = new NumericUpDown();
         maxOutputTokensLabel = new Label();
         maxOutputTokensNumeric = new NumericUpDown();
+        thinkingLevelLabel = new Label();
+        thinkingLevelComboBox = new ComboBox();
         okButton = new Button();
         cancelButton = new Button();
         deleteButton = new Button();
@@ -112,10 +116,30 @@ partial class ProfileForm
         maxOutputTokensNumeric.TabIndex = 3;
         maxOutputTokensNumeric.Value = new decimal(new int[] { 8192, 0, 0, 0 });
         //
+        // thinkingLevelLabel
+        //
+        thinkingLevelLabel.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+        thinkingLevelLabel.AutoSize = true;
+        thinkingLevelLabel.Location = new Point(14, 237);
+        thinkingLevelLabel.Name = "thinkingLevelLabel";
+        thinkingLevelLabel.Size = new Size(86, 15);
+        thinkingLevelLabel.TabIndex = 8;
+        thinkingLevelLabel.Text = "Thinking Level:";
+        //
+        // thinkingLevelComboBox
+        //
+        thinkingLevelComboBox.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+        thinkingLevelComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+        thinkingLevelComboBox.Items.AddRange(new object[] { "Off", "Low", "Medium", "High" });
+        thinkingLevelComboBox.Location = new Point(120, 234);
+        thinkingLevelComboBox.Name = "thinkingLevelComboBox";
+        thinkingLevelComboBox.Size = new Size(80, 23);
+        thinkingLevelComboBox.TabIndex = 9;
+        //
         // deleteButton
         //
         deleteButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-        deleteButton.Location = new Point(14, 245);
+        deleteButton.Location = new Point(14, 275);
         deleteButton.Name = "deleteButton";
         deleteButton.Size = new Size(88, 27);
         deleteButton.TabIndex = 6;
@@ -127,7 +151,7 @@ partial class ProfileForm
         //
         okButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
         okButton.DialogResult = DialogResult.OK;
-        okButton.Location = new Point(244, 245);
+        okButton.Location = new Point(244, 275);
         okButton.Name = "okButton";
         okButton.Size = new Size(88, 27);
         okButton.TabIndex = 4;
@@ -139,7 +163,7 @@ partial class ProfileForm
         //
         cancelButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
         cancelButton.DialogResult = DialogResult.Cancel;
-        cancelButton.Location = new Point(338, 245);
+        cancelButton.Location = new Point(338, 275);
         cancelButton.Name = "cancelButton";
         cancelButton.Size = new Size(88, 27);
         cancelButton.TabIndex = 5;
@@ -153,10 +177,12 @@ partial class ProfileForm
         AutoScaleDimensions = new SizeF(7F, 15F);
         AutoScaleMode = AutoScaleMode.Font;
         CancelButton = cancelButton;
-        ClientSize = new Size(452, 285);
+        ClientSize = new Size(452, 315);
         Controls.Add(deleteButton);
         Controls.Add(cancelButton);
         Controls.Add(okButton);
+        Controls.Add(thinkingLevelComboBox);
+        Controls.Add(thinkingLevelLabel);
         Controls.Add(maxOutputTokensNumeric);
         Controls.Add(maxOutputTokensLabel);
         Controls.Add(temperatureNumeric);

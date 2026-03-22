@@ -336,8 +336,13 @@ public static class CellmFunctions
             // Check for cancellation before sending request
             cancellationToken.ThrowIfCancellationRequested();
 
+            // Apply configurable request timeout
+            var timeoutSeconds = cellmAddInConfiguration.CurrentValue.RequestTimeoutInSeconds;
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+
             var client = CellmAddIn.Services.GetRequiredService<Client>();
-            var response = await client.GetResponseAsync(prompt, arguments.Provider, cancellationToken).ConfigureAwait(false);
+            var response = await client.GetResponseAsync(prompt, arguments.Provider, linkedCts.Token).ConfigureAwait(false);
             var assistantMessage = response.Messages.LastOrDefault()?.Text ?? throw new InvalidOperationException("No text response");
 
             // Check for cancellation before returning response

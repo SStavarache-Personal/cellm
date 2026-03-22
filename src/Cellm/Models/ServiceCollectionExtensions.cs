@@ -15,6 +15,7 @@ using Cellm.Models.Providers.Anthropic;
 using Cellm.Models.Providers.Aws;
 using Cellm.Models.Providers.Azure;
 using Cellm.Models.Providers.DeepSeek;
+using Cellm.Models.Providers.FoundryLocal;
 using Cellm.Models.Providers.Google;
 using Cellm.Models.Providers.LmStudio;
 using Cellm.Models.Providers.Mistral;
@@ -236,6 +237,25 @@ internal static class ServiceCollectionExtensions
                     });
 
                 return openAiClient.GetChatClient(deepSeekConfiguration.CurrentValue.DefaultModel).AsIChatClient();
+            }, ServiceLifetime.Transient)
+            .UseFunctionInvocation();
+
+        return services;
+    }
+
+    public static IServiceCollection AddFoundryLocalChatClient(this IServiceCollection services)
+    {
+        services
+            .AddKeyedChatClient(Provider.FoundryLocal, serviceProvider =>
+            {
+                var foundryLocalConfiguration = serviceProvider.GetRequiredService<IOptionsMonitor<FoundryLocalConfiguration>>();
+                var modelManager = serviceProvider.GetRequiredService<FoundryLocalModelManager>();
+                var resilientHttpClient = serviceProvider.GetResilientHttpClient(Provider.FoundryLocal);
+
+                return new FoundryLocalChatClient(
+                    foundryLocalConfiguration.CurrentValue.DefaultModel,
+                    modelManager,
+                    resilientHttpClient);
             }, ServiceLifetime.Transient)
             .UseFunctionInvocation();
 

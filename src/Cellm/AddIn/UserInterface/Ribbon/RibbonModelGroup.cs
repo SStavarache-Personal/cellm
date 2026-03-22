@@ -8,6 +8,7 @@ using Cellm.Models.Providers.Anthropic;
 using Cellm.Models.Providers.Aws;
 using Cellm.Models.Providers.Azure;
 using Cellm.Models.Providers.DeepSeek;
+using Cellm.Models.Providers.FoundryLocal;
 using Cellm.Models.Providers.Google;
 using Cellm.Models.Providers.LmStudio;
 using Cellm.Models.Providers.Mistral;
@@ -41,6 +42,8 @@ public partial class RibbonMain
         ModelComboBox,
         ProfileComboBox,
         EditProfileButton,
+
+        TimeoutEditBox,
 
         CacheToggleButton,
 
@@ -106,6 +109,14 @@ public partial class RibbonMain
                                 screentip="Edit profile"
                                 supertip="Edit the current profile or create a new one."
                                 onAction="{nameof(OnEditProfile)}" />
+                        <editBox id="{nameof(ModelGroupControlIds.TimeoutEditBox)}"
+                                 label="Timeout (s)"
+                                 showLabel="true"
+                                 sizeString="99999"
+                                 screentip="Request timeout"
+                                 supertip="Maximum time in seconds to wait for a model response before cancelling the request."
+                                 getText="{nameof(GetTimeoutText)}"
+                                 onChange="{nameof(OnTimeoutChange)}" />
                     </box>
                     {ModelGroupStatistics()}
                 </box>
@@ -354,6 +365,11 @@ public partial class RibbonMain
             return GetLmStudioModels();
         }
 
+        if (provider == Provider.FoundryLocal)
+        {
+            return GetFoundryLocalModels();
+        }
+
         var modelNames = new List<string>();
         var small = GetModelNameForProvider(provider, "SmallModel");
         var big = GetModelNameForProvider(provider, "MediumModel");
@@ -396,6 +412,20 @@ public partial class RibbonMain
         catch (Exception ex)
         {
             _logger.LogWarning("Could not fetch LM Studio models: {message}", ex.Message);
+            return [];
+        }
+    }
+
+    private List<string> GetFoundryLocalModels()
+    {
+        try
+        {
+            var modelManager = CellmAddIn.Services.GetRequiredService<FoundryLocalModelManager>();
+            return modelManager.GetCatalogModelAliases();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Could not fetch Foundry Local models: {message}", ex.Message);
             return [];
         }
     }
@@ -501,6 +531,8 @@ public partial class RibbonMain
                     break;
                 case Provider.DeepSeek:
                     currentBaseAddress = GetProviderConfiguration<DeepSeekConfiguration>()?.BaseAddress?.ToString() ?? "";
+                    break;
+                case Provider.FoundryLocal:
                     break;
                 case Provider.Gemini:
                     currentBaseAddress = GetProviderConfiguration<GeminiConfiguration>()?.BaseAddress?.ToString() ?? "";
@@ -625,6 +657,7 @@ public partial class RibbonMain
             SetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.DefaultTemperature)}",
                 profile.Temperature.ToString("0.0", CultureInfo.InvariantCulture));
             SetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.MaxOutputTokens)}", profile.MaxOutputTokens);
+            SetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.ThinkingLevel)}", profile.ThinkingLevel.ToString());
         }
         catch (Exception ex)
         {
@@ -664,7 +697,7 @@ public partial class RibbonMain
         var activeProfile = profiles.FirstOrDefault(p => p.Name == activeProfileName);
 
         using var form = activeProfile is not null
-            ? new ProfileForm(activeProfile.Name, activeProfile.SystemPrompt, activeProfile.Temperature, activeProfile.MaxOutputTokens)
+            ? new ProfileForm(activeProfile.Name, activeProfile.SystemPrompt, activeProfile.Temperature, activeProfile.MaxOutputTokens, activeProfile.ThinkingLevel)
             : new ProfileForm();
 
         if (form.ShowDialog() != DialogResult.OK)
@@ -690,6 +723,7 @@ public partial class RibbonMain
                     SetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.DefaultTemperature)}",
                         firstProfile.Temperature.ToString("0.0", CultureInfo.InvariantCulture));
                     SetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.MaxOutputTokens)}", firstProfile.MaxOutputTokens);
+                    SetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.ThinkingLevel)}", firstProfile.ThinkingLevel.ToString());
                 }
             }
             else
@@ -699,7 +733,8 @@ public partial class RibbonMain
                     Name = form.ProfileName,
                     SystemPrompt = form.SystemPrompt,
                     Temperature = form.Temperature,
-                    MaxOutputTokens = form.MaxOutputTokens
+                    MaxOutputTokens = form.MaxOutputTokens,
+                    ThinkingLevel = form.ThinkingLevel
                 };
 
                 if (activeProfile is not null)
@@ -726,6 +761,7 @@ public partial class RibbonMain
                 SetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.DefaultTemperature)}",
                     newProfile.Temperature.ToString("0.0", CultureInfo.InvariantCulture));
                 SetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.MaxOutputTokens)}", newProfile.MaxOutputTokens);
+                SetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.ThinkingLevel)}", newProfile.ThinkingLevel.ToString());
             }
 
             _ribbonUi?.InvalidateControl(nameof(ModelGroupControlIds.ProfileComboBox));
@@ -789,6 +825,30 @@ public partial class RibbonMain
     public bool GetCachePressed(IRibbonControl control)
     {
         return bool.Parse(GetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.EnableCache)}"));
+    }
+
+    public string GetTimeoutText(IRibbonControl control)
+    {
+        try
+        {
+            return GetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.RequestTimeoutInSeconds)}");
+        }
+        catch (KeyNotFoundException)
+        {
+            return "600";
+        }
+    }
+
+    public void OnTimeoutChange(IRibbonControl control, string text)
+    {
+        if (int.TryParse(text, out var seconds) && seconds > 0)
+        {
+            SetValue($"{nameof(CellmAddInConfiguration)}:{nameof(CellmAddInConfiguration.RequestTimeoutInSeconds)}", seconds);
+        }
+        else
+        {
+            _ribbonUi?.InvalidateControl(control.Id);
+        }
     }
 
     private void InvalidateModelControls()

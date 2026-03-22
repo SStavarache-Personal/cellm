@@ -8,6 +8,7 @@ using Cellm.Models.Providers.Aws;
 using Cellm.Models.Providers.Azure;
 using Cellm.Models.Providers.Behaviors;
 using Cellm.Models.Providers.DeepSeek;
+using Cellm.Models.Providers.FoundryLocal;
 using Cellm.Models.Providers.Google;
 using Cellm.Models.Providers.LmStudio;
 using Cellm.Models.Providers.Mistral;
@@ -90,6 +91,7 @@ public class CellmAddIn : IExcelAddIn
             .Configure<LmStudioConfiguration>(configuration.GetRequiredSection(nameof(LmStudioConfiguration)))
             .Configure<CellmAddInConfiguration>(configuration.GetRequiredSection(nameof(CellmAddInConfiguration)))
             .Configure<DeepSeekConfiguration>(configuration.GetRequiredSection(nameof(DeepSeekConfiguration)))
+            .Configure<FoundryLocalConfiguration>(configuration.GetRequiredSection(nameof(FoundryLocalConfiguration)))
             .Configure<MistralConfiguration>(configuration.GetRequiredSection(nameof(MistralConfiguration)))
             .Configure<ModelContextProtocolConfiguration>(configuration.GetRequiredSection(nameof(ModelContextProtocolConfiguration)))
             .Configure<OllamaConfiguration>(configuration.GetRequiredSection(nameof(OllamaConfiguration)))
@@ -144,6 +146,7 @@ public class CellmAddIn : IExcelAddIn
             .AddSingleton<IProviderBehavior, AdditionalPropertiesBehavior>()
             .AddSingleton<IProviderBehavior, GeminiTemperatureBehavior>()
             .AddSingleton<IProviderBehavior, OpenAiTemperatureBehavior>()
+            .AddSingleton<IProviderBehavior, ThinkingBehavior>()
             .AddSingleton<IProviderBehavior, MistralThinkingBehavior>();
 
         // Internals
@@ -157,6 +160,7 @@ public class CellmAddIn : IExcelAddIn
             .AddRateLimiter(resilienceConfiguration)
             .AddResilientHttpClient(resilienceConfiguration, cellmAddInConfiguration, Provider.Anthropic)
             .AddResilientHttpClient(resilienceConfiguration, cellmAddInConfiguration, Provider.DeepSeek)
+            .AddResilientHttpClient(resilienceConfiguration, cellmAddInConfiguration, Provider.FoundryLocal)
             .AddResilientHttpClient(resilienceConfiguration, cellmAddInConfiguration, Provider.Gemini)
             .AddResilientHttpClient(resilienceConfiguration, cellmAddInConfiguration, Provider.LmStudio)
             .AddResilientHttpClient(resilienceConfiguration, cellmAddInConfiguration, Provider.Mistral)
@@ -171,11 +175,13 @@ public class CellmAddIn : IExcelAddIn
 
         // Add providers
         services
+            .AddSingleton<FoundryLocalModelManager>()
             .AddSingleton<IChatClientFactory, ChatClientFactory>()
             .AddAnthropicChatClient()
             .AddAwsChatClient()
             .AddAzureChatClient()
             .AddDeepSeekChatClient()
+            .AddFoundryLocalChatClient()
             .AddGeminiChatClient()
             .AddLmStudioChatClient()
             .AddMistralChatClient()
@@ -224,6 +230,7 @@ public class CellmAddIn : IExcelAddIn
             Services.GetRequiredService<IOptionsMonitor<AwsConfiguration>>().CurrentValue,
             Services.GetRequiredService<IOptionsMonitor<AzureConfiguration>>().CurrentValue,
             Services.GetRequiredService<IOptionsMonitor<DeepSeekConfiguration>>().CurrentValue,
+            Services.GetRequiredService<IOptionsMonitor<FoundryLocalConfiguration>>().CurrentValue,
             Services.GetRequiredService<IOptionsMonitor<GeminiConfiguration>>().CurrentValue,
             Services.GetRequiredService<IOptionsMonitor<LmStudioConfiguration>>().CurrentValue,
             Services.GetRequiredService<IOptionsMonitor<MistralConfiguration>>().CurrentValue,
@@ -245,6 +252,15 @@ public class CellmAddIn : IExcelAddIn
     {
         if (_serviceProvider.IsValueCreated)
         {
+            try
+            {
+                _serviceProvider.Value.GetService<FoundryLocalModelManager>()?.Dispose();
+            }
+            catch
+            {
+                // Best-effort cleanup
+            }
+
             (_serviceProvider.Value as IDisposable)?.Dispose();
         }
     }

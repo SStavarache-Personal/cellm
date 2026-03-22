@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <Version>0.7.0</Version>
   </PropertyGroup>
 
@@ -14,6 +15,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="AddIn\UserInterface\Resources\FoundryLocal.png" />
     <None Remove="AddIn\UserInterface\Resources\anthropic.png" />
     <None Remove="AddIn\UserInterface\Resources\aws.png" />
     <None Remove="AddIn\UserInterface\Resources\azure.png" />
@@ -33,6 +35,7 @@
     <PackageReference Include="ExcelDna.Addin" Version="1.9.0" />
     <PackageReference Include="ExcelDna.Interop" Version="15.0.1" />
     <PackageReference Include="MediatR" Version="13.0.0" />
+    <PackageReference Include="Microsoft.AI.Foundry.Local" Version="0.9.0" />
     <PackageReference Include="Microsoft.Extensions.AI" Version="10.4.1" />
     <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.4.1" />
     <PackageReference Include="Microsoft.Extensions.AI.AzureAIInference" Version="9.5.0-preview.1.25265.7" />
@@ -75,6 +78,7 @@
     <EmbeddedResource Include="AddIn\UserInterface\Resources\Aws.png" />
     <EmbeddedResource Include="AddIn\UserInterface\Resources\Azure.png" />
     <EmbeddedResource Include="AddIn\UserInterface\Resources\DeepSeek.png" />
+    <EmbeddedResource Include="AddIn\UserInterface\Resources\FoundryLocal.png" />
     <EmbeddedResource Include="AddIn\UserInterface\Resources\Gemini.png" />
     <EmbeddedResource Include="AddIn\UserInterface\Resources\LmStudio.png" />
     <EmbeddedResource Include="AddIn\UserInterface\Resources\MCP.png" />
